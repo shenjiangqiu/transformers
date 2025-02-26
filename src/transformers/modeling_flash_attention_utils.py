@@ -387,3 +387,4 @@ class FlashAttentionKwargs(TypedDict, total=False):
     cu_seq_lens_k: Optional[torch.LongTensor]
     max_length_q: Optional[int]
     max_length_k: Optional[int]
+    save_info: Optional[bool]

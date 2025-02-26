@@ -15,6 +15,9 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
 
 
+layer = 0
+
+
 def sdpa_attention_forward(
     module: torch.nn.Module,
     query: torch.Tensor,
@@ -50,7 +53,16 @@ def sdpa_attention_forward(
     # We convert it to a bool for the SDPA kernel that only accepts bools.
     if torch.jit.is_tracing() and isinstance(is_causal, torch.Tensor):
         is_causal = is_causal.item()
-
+    if kwargs.get("save_info", False):
+        print(f"query.shape: {query.shape}")
+        print(f"key.shape: {key.shape}")
+        print(f"value.shape: {value.shape}")
+        qk_internal = query[0][:, -1, :].unsqueeze(-2) * key[0]
+        layer = sdpa_attention_forward.layer
+        print(f"saving qk_internal_{layer}.pt")
+        sdpa_attention_forward.layer += 1
+        torch.save(qk_internal, f"qk_internal_{layer}.pt")
+        print(f"qk_internal.shape: {qk_internal.shape}")
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         query,
         key,
@@ -63,3 +75,4 @@ def sdpa_attention_forward(
     attn_output = attn_output.transpose(1, 2).contiguous()
 
     return attn_output, None
+sdpa_attention_forward.layer = 0
