@@ -11,7 +11,9 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
     batch, num_key_value_heads, slen, head_dim = hidden_states.shape
     if n_rep == 1:
         return hidden_states
-    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+    hidden_states = hidden_states[:, :, None, :, :].expand(
+        batch, num_key_value_heads, n_rep, slen, head_dim
+    )
     return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
 
 
@@ -63,6 +65,19 @@ def sdpa_attention_forward(
         sdpa_attention_forward.layer += 1
         torch.save(qk_internal, f"qk_internal_{layer}.pt")
         print(f"qk_internal.shape: {qk_internal.shape}")
+    if kwargs.get("sjq_sparse") is not None:
+        sparse_mode = kwargs.get("sjq_sparse")
+        if sparse_mode == 0:
+            print("sparse Q mode")
+            # in this mode we use top k dimention to calculate Q*K and select top J tokens to do sparse attention
+            
+
+        elif sparse_mode == 1:
+            print("sprase mode exp")
+        elif sparse_mode >= 2:
+            print(f"sparse mode n_bits: {sparse_mode}")
+        pass
+
     attn_output = torch.nn.functional.scaled_dot_product_attention(
         query,
         key,
@@ -75,4 +90,6 @@ def sdpa_attention_forward(
     attn_output = attn_output.transpose(1, 2).contiguous()
 
     return attn_output, None
+
+
 sdpa_attention_forward.layer = 0
